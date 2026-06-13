@@ -138,7 +138,7 @@
     const post = posts[0];
     const cat  = post.categories;
 
-    document.title = `${post.title} — Blog do Luiz Miguel`;
+    document.title = `${post.title} - Blog do Luiz Miguel`;
 
     main.innerHTML = `
       <a class="back-link" href="/">&larr; Todos os posts</a>
