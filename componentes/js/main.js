@@ -164,7 +164,7 @@
     if (error) { main.innerHTML = `<p class="state-msg">Erro: ${error.message}</p>`; return; }
 
     const catName = found ? found.name : catSlug;
-    document.title = `${catName} — Blog do Luiz Miguel`;
+    document.title = `${catName} - Blog do Luiz Miguel`;
 
     let html = `
       <a class="back-link" href="/">&larr; Todos os posts</a>
