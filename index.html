@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog do Luiz Miguel</title>
+  <meta name="description" content="Reflexões, crônicas e outros escritos." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="componentes/css/index.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="card">
+
+  <header class="card-header">
+    <div class="blog-title"><a href="/">Blog do Luiz Miguel</a></div>
+    <div class="blog-subtitle">Reflexões, crônicas e outros escritos.</div>
+  </header>
+
+  <nav class="card-nav" id="card-nav">
+    <a href="/" id="nav-all">Todos os posts</a>
+  </nav>
+
+  <div class="card-body">
+
+    <main class="card-main" id="card-main">
+      <p class="state-msg">Carregando...</p>
+    </main>
+
+    <aside class="card-sidebar">
+      <div class="sidebar-block">
+        <div class="sidebar-label">Categorias</div>
+        <ul class="cat-list" id="cat-list">
+          <li><span class="state-msg">Carregando...</span></li>
+        </ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="card-footer">
+    &copy; <span id="footer-year"></span> Luiz Miguel.
+  </footer>
+</div>
+
+  <script src="componentes/js/main.css"></script>
+</body>
+</html>
