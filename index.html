@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="componentes/css/index.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
 
@@ -18,6 +20,17 @@
   <header class="card-header">
     <div class="blog-title"><a href="/">Blog do Luiz Miguel</a></div>
     <div class="blog-subtitle">Reflexões, crônicas e outros escritos.</div>
+
+    <div class="search-wrap">
+      <input
+        type="text"
+        id="search-input"
+        class="search-input"
+        placeholder="Pesquisar posts..."
+        autocomplete="off"
+      />
+      <div class="search-results" id="search-results"></div>
+    </div>
   </header>
 
   <nav class="card-nav" id="card-nav">
@@ -42,10 +55,10 @@
   </div>
 
   <footer class="card-footer">
-    &copy; <span id="footer-year"></span> Luiz Miguel.
+    &copy; <span id="footer-year"></span> Blog do Luiz Miguel
   </footer>
 </div>
 
-  <script src="componentes/js/main.js"></script>
+<script src="componentes/js/main.js"></script>
 </body>
 </html>
