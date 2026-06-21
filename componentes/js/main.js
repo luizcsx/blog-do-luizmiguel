@@ -14,10 +14,19 @@
 
   function renderContent(text) {
     if (!text) return '';
-    return text
-      .split(/\n{2,}/)
-      .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
-      .join('');
+    const rawHtml = marked.parse(text, { breaks: true });
+    return DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'hr',
+        'strong', 'em', 'b', 'i', 'u', 's', 'del',
+        'a', 'img',
+        'ul', 'ol', 'li',
+        'blockquote', 'code', 'pre',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td'
+      ],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'target', 'rel']
+    });
   }
 
   async function init() {
@@ -25,9 +34,10 @@
     const postSlug = params.get('post');
     const catSlug  = params.get('categoria');
 
-    const [{ data: categories }, { data: allPostsMini }] = await Promise.all([
+    const [{ data: categories }, { data: allPostsMini }, { data: searchData }] = await Promise.all([
       sb.from('categories').select('id, name, slug').order('name'),
-      sb.from('posts').select('category_id')
+      sb.from('posts').select('category_id'),
+      sb.from('posts').select('title, slug, content')
     ]);
 
     const countMap = {};
@@ -37,6 +47,7 @@
 
     buildNav(categories || [], catSlug, postSlug);
     buildSidebar(categories || [], countMap);
+    setupSearch(searchData || []);
 
     if (postSlug) {
       await viewPost(postSlug);
@@ -44,6 +55,78 @@
       await viewCategory(catSlug, categories || []);
     } else {
       await viewHome();
+    }
+  }
+
+  function normalizeText(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function setupSearch(posts) {
+    const input   = document.getElementById('search-input');
+    const results = document.getElementById('search-results');
+
+    const index = posts.map(p => ({
+      title: p.title,
+      slug: p.slug,
+      normTitle: normalizeText(p.title || ''),
+      normContent: normalizeText(p.content || ''),
+      snippet: (p.content || '').slice(0, 90).replace(/[#*_>`]/g, '').trim()
+    }));
+
+    let debounceTimer = null;
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => runSearch(input.value), 150);
+    });
+
+    input.addEventListener('focus', () => {
+      if (input.value.trim()) results.classList.add('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-wrap')) results.classList.remove('open');
+    });
+
+    function runSearch(rawQuery) {
+      const query = normalizeText(rawQuery.trim());
+
+      if (!query) {
+        results.classList.remove('open');
+        results.innerHTML = '';
+        return;
+      }
+
+      const scored = index
+        .map(item => {
+          let score = 0;
+          if (item.normTitle === query) score += 100;
+          else if (item.normTitle.startsWith(query)) score += 50;
+          else if (item.normTitle.includes(query)) score += 25;
+          if (item.normContent.includes(query)) score += 5;
+          return { item, score };
+        })
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8);
+
+      if (!scored.length) {
+        results.innerHTML = '<div class="search-empty">Nenhum resultado encontrado.</div>';
+        results.classList.add('open');
+        return;
+      }
+
+      results.innerHTML = scored.map(({ item }) => `
+        <a class="search-result-item" href="?post=${item.slug}">
+          <span class="search-result-title">${item.title}</span>
+          <span class="search-result-snippet">${item.snippet}…</span>
+        </a>
+      `).join('');
+      results.classList.add('open');
     }
   }
 
@@ -81,7 +164,7 @@
 
     const { data: posts, error } = await sb
       .from('posts')
-      .select('id, title, slug, content, excerpt, published_at, categories(name, slug)')
+      .select('id, title, slug, content, excerpt, image_url, published_at, categories(name, slug)')
       .order('published_at', { ascending: false })
       .limit(10);
 
@@ -93,6 +176,7 @@
 
     let html = `
       <div>
+        ${latest.image_url ? `<img class="post-image" src="${latest.image_url}" alt="${latest.title}">` : ''}
         <div class="post-meta">
           <span>${formatDate(latest.published_at)}</span>
           ${cat ? `<a class="post-cat-tag" href="?categoria=${cat.slug}">${cat.name}</a>` : ''}
@@ -110,7 +194,10 @@
           <div class="section-label">Posts anteriores</div>
           ${older.map(p => `
             <div class="post-list-item">
-              <a class="post-list-title" href="?post=${p.slug}">${p.title}</a>
+              <div class="post-list-left">
+                ${p.image_url ? `<img class="post-list-thumb" src="${p.image_url}" alt="">` : ''}
+                <a class="post-list-title" href="?post=${p.slug}">${p.title}</a>
+              </div>
               <span class="post-list-date">${formatDate(p.published_at)}</span>
             </div>
           `).join('')}
@@ -126,7 +213,7 @@
 
     const { data: posts, error } = await sb
       .from('posts')
-      .select('id, title, slug, content, published_at, categories(name, slug)')
+      .select('id, title, slug, content, image_url, published_at, categories(name, slug)')
       .eq('slug', slug)
       .limit(1);
 
@@ -138,10 +225,11 @@
     const post = posts[0];
     const cat  = post.categories;
 
-    document.title = `${post.title} - Blog do Luiz Miguel`;
+    document.title = `${post.title} — Blog do Luiz Miguel`;
 
     main.innerHTML = `
       <a class="back-link" href="/">&larr; Todos os posts</a>
+      ${post.image_url ? `<img class="post-image" src="${post.image_url}" alt="${post.title}">` : ''}
       <div class="post-meta">
         <span>${formatDate(post.published_at)}</span>
         ${cat ? `<a class="post-cat-tag" href="?categoria=${cat.slug}">${cat.name}</a>` : ''}
@@ -157,14 +245,14 @@
 
     const { data: posts, error } = await sb
       .from('posts')
-      .select('id, title, slug, published_at, categories!inner(slug)')
+      .select('id, title, slug, image_url, published_at, categories!inner(slug)')
       .eq('categories.slug', catSlug)
       .order('published_at', { ascending: false });
 
     if (error) { main.innerHTML = `<p class="state-msg">Erro: ${error.message}</p>`; return; }
 
     const catName = found ? found.name : catSlug;
-    document.title = `${catName} - Blog do Luiz Miguel`;
+    document.title = `${catName} — Blog do Luiz Miguel`;
 
     let html = `
       <a class="back-link" href="/">&larr; Todos os posts</a>
@@ -176,7 +264,10 @@
     } else {
       html += posts.map(p => `
         <div class="post-list-item">
-          <a class="post-list-title" href="?post=${p.slug}">${p.title}</a>
+          <div class="post-list-left">
+            ${p.image_url ? `<img class="post-list-thumb" src="${p.image_url}" alt="">` : ''}
+            <a class="post-list-title" href="?post=${p.slug}">${p.title}</a>
+          </div>
           <span class="post-list-date">${formatDate(p.published_at)}</span>
         </div>
       `).join('');
